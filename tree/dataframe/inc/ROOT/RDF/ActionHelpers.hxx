@@ -1273,6 +1273,8 @@ class R__CLING_PTRCHECK(off) StdDevHelper : public RActionImpl<StdDevHelper> {
    std::vector<double> fMeans;
    // Squared distance from the mean
    std::vector<double> fDistancesfromMean;
+   std::vector<double> fCompensation; //Kahan
+   std::vector<double> fCompensation2; //Kahan
 
 public:
    StdDevHelper(const std::shared_ptr<double> &meanVPtr, const unsigned int nSlots);

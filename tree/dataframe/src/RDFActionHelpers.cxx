@@ -179,7 +179,7 @@ template void MeanHelper::Exec(unsigned int, const std::vector<int> &);
 template void MeanHelper::Exec(unsigned int, const std::vector<unsigned int> &);
 
 StdDevHelper::StdDevHelper(const std::shared_ptr<double> &meanVPtr, const unsigned int nSlots)
-   : fNSlots(nSlots), fResultStdDev(meanVPtr), fCounts(nSlots, 0), fMeans(nSlots, 0), fDistancesfromMean(nSlots, 0)
+   : fNSlots(nSlots), fResultStdDev(meanVPtr), fCounts(nSlots, 0), fMeans(nSlots, 0), fDistancesfromMean(nSlots, 0), fCompensation(nSlots, 0), fCompensation2(nSlots, 0)
 {
 }
 
@@ -212,7 +212,14 @@ void StdDevHelper::Finalize()
 
    double overallMean = 0;
    for (unsigned int i = 0; i < fNSlots; ++i) {
-      overallMean += fCounts[i] * fMeans[i];
+
+      // Kahan Sum
+      double y = fCounts[i] * fMeans[i] - fCompensation[i];
+      double t = overallMean + y;
+      fCompensation[i] = (t - overallMean) - y;
+      overallMean = t;     
+
+      //overallMean += fCounts[i] * fMeans[i];
    }
    overallMean = overallMean / totalElements;
 
@@ -222,7 +229,13 @@ void StdDevHelper::Finalize()
          continue;
       }
       auto setVariance = fDistancesfromMean[i] / (fCounts[i]);
-      variance += (fCounts[i]) * (setVariance + std::pow((fMeans[i] - overallMean), 2));
+      // Kahan Sum
+      double y = (fCounts[i]) * (setVariance + std::pow((fMeans[i] - overallMean), 2)) - fCompensation2[i];
+      double t = variance + y;
+      fCompensation2[i] = (t - variance) - y;
+      variance = t;      
+
+      //variance += (fCounts[i]) * (setVariance + std::pow((fMeans[i] - overallMean), 2));
    }
 
    variance = variance / (totalElements - 1);
