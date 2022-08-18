@@ -749,6 +749,13 @@ TEST(RDFSimpleTests, KahanMean)
    EXPECT_EQ(*dd.Mean<double>({"x"}), 50000000.0000000074505806);
 }
 
+TEST(RDFSimpleTests, KahanStdDev)
+{
+   ROOT::RDataFrame d(20);
+   auto dd = d.Define("x", "(rdfentry_ %2 == 0) ? 0.00000001 : 100000000.");
+   EXPECT_EQ(*dd.StdDev<double>({"x"}), 51298917.604257695376873);
+}
+
 TEST(RDFSimpleTests, GenVector)
 {
    // The leading underscore of "_hh" tests against ROOT-10305.
