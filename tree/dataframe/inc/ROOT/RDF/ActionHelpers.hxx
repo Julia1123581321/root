@@ -1180,6 +1180,7 @@ public:
    ResultType y(0);
    ResultType t(0);
    for (auto &m : fSums) {
+
          // Kahan Sum:
          y = m - compensation;
          t = sum + y;
@@ -1225,8 +1226,8 @@ public:
    void Exec(unsigned int slot, const T &vs)
    {
       for (auto &&v : vs) {
-
          fCounts[slot]++;
+
          // Kahan Sum
          double y = v - fCompensations[slot];
          double t = fSums[slot] + y;
@@ -1273,8 +1274,8 @@ class R__CLING_PTRCHECK(off) StdDevHelper : public RActionImpl<StdDevHelper> {
    std::vector<double> fMeans;
    // Squared distance from the mean
    std::vector<double> fDistancesfromMean;
-   std::vector<double> fCompensation; //Kahan
-   std::vector<double> fCompensation2; //Kahan
+   std::vector<double> fCompensation1;
+   std::vector<double> fCompensation2;
 
 public:
    StdDevHelper(const std::shared_ptr<double> &meanVPtr, const unsigned int nSlots);
@@ -1283,13 +1284,48 @@ public:
    void InitTask(TTreeReader *, unsigned int) {}
    void Exec(unsigned int slot, double v);
 
+   
    template <typename T, std::enable_if_t<IsDataContainer<T>::value, int> = 0>
    void Exec(unsigned int slot, const T &vs)
    {
+      /*
+      //double compensation1 = 0;
+      //double compensation2 = 0;
+      for (auto &&v : vs) {
+     
+      // Applies the Welford's algorithm to the stream of values received by the thread
+      auto count = ++fCounts[slot];
+
+      //Kahan1: fMeans[slot] = sum, delta/count = input[i], 
+      auto delta = v - fMeans[slot];
+
+      //auto mean = fMeans[slot] + delta / count;
+      auto y = delta/count - compensation1;
+      auto t = fMeans[slot] + y;
+      compensation1 = (t - fMeans[slot]) - y;
+      fMeans[slot] = t;
+      //auto delta2 = v - mean;
+      auto delta2 = v - fMeans[slot];
+
+      //Kahan2: fDistancesfromMean[slot] = sum, delta * delta2 = input[i], y-> x, t-> s
+      auto x = delta * delta2 - compensation2;
+      auto s = fDistancesfromMean[slot] + x;
+      compensation2 = (s - fDistancesfromMean[slot]) - x;
+      fDistancesfromMean[slot] = s;
+      //auto distance = fDistancesfromMean[slot] + delta * delta2;
+
+      fCounts[slot] = count;
+      //fMeans[slot] = mean;
+      //fDistancesfromMean[slot] = distance;
+      }
+
+*/
       for (auto &&v : vs) {
          Exec(slot, v);
       }
    }
+
+
 
    void Initialize() { /* noop */}
 

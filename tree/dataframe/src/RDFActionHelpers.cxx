@@ -133,7 +133,7 @@ BufferedFillHelper::Exec(unsigned int, const std::vector<unsigned int> &, const 
 // template void MaxHelper::Exec(unsigned int, const std::vector<unsigned int> &);
 
 MeanHelper::MeanHelper(const std::shared_ptr<double> &meanVPtr, const unsigned int nSlots)
-   : fResultMean(meanVPtr), fCounts(nSlots, 0), fSums(nSlots, 0), fPartialMeans(nSlots), fCompensations(nSlots)
+   : fResultMean(meanVPtr), fCounts(nSlots, 0), fSums(nSlots, 0), fPartialMeans(nSlots), fCompensations(nSlots, 0)
 {
 }
 
@@ -179,15 +179,17 @@ template void MeanHelper::Exec(unsigned int, const std::vector<int> &);
 template void MeanHelper::Exec(unsigned int, const std::vector<unsigned int> &);
 
 StdDevHelper::StdDevHelper(const std::shared_ptr<double> &meanVPtr, const unsigned int nSlots)
-   : fNSlots(nSlots), fResultStdDev(meanVPtr), fCounts(nSlots, 0), fMeans(nSlots, 0), fDistancesfromMean(nSlots, 0), fCompensation(nSlots, 0), fCompensation2(nSlots, 0)
+   : fNSlots(nSlots), fResultStdDev(meanVPtr), fCounts(nSlots, 0), fMeans(nSlots, 0), fDistancesfromMean(nSlots, 0), fCompensation1(nSlots, 0), fCompensation2(nSlots, 0)
 {
 }
 
 void StdDevHelper::Exec(unsigned int slot, double v)
 {
    // Applies the Welford's algorithm to the stream of values received by the thread
+   /*
    auto count = ++fCounts[slot];
    auto delta = v - fMeans[slot];
+
    auto mean = fMeans[slot] + delta / count;
    auto delta2 = v - mean;
    auto distance = fDistancesfromMean[slot] + delta * delta2;
@@ -195,6 +197,31 @@ void StdDevHelper::Exec(unsigned int slot, double v)
    fCounts[slot] = count;
    fMeans[slot] = mean;
    fDistancesfromMean[slot] = distance;
+   */
+   // Applies the Welford's algorithm to the stream of values received by the thread
+   auto count = ++fCounts[slot];
+
+   //Kahan1: fMeans[slot] = sum, delta/count = input[i], 
+   auto delta = v - fMeans[slot];
+
+   //auto mean = fMeans[slot] + delta / count;
+   auto y = delta/count - fCompensation1[slot];
+   auto t = fMeans[slot] + y;
+   fCompensation1[slot] = (t - fMeans[slot]) - y;
+   fMeans[slot] = t;
+   //auto delta2 = v - mean;
+   auto delta2 = v - fMeans[slot];
+
+   //Kahan2: fDistancesfromMean[slot] = sum, delta * delta2 = input[i], y-> x, t-> s
+   auto x = delta * delta2 - fCompensation2[slot];
+   auto s = fDistancesfromMean[slot] + x;
+   fCompensation2[slot] = (s - fDistancesfromMean[slot]) - x;
+   fDistancesfromMean[slot] = s;
+   //auto distance = fDistancesfromMean[slot] + delta * delta2;
+
+   fCounts[slot] = count;
+   //fMeans[slot] = mean;
+   //fDistancesfromMean[slot] = distance;
 }
 
 void StdDevHelper::Finalize()
@@ -210,19 +237,21 @@ void StdDevHelper::Finalize()
       return;
    }
 
+   double compensation = 0;
    double overallMean = 0;
    for (unsigned int i = 0; i < fNSlots; ++i) {
 
       // Kahan Sum
-      double y = fCounts[i] * fMeans[i] - fCompensation[i];
+      double y = fCounts[i] * fMeans[i] - compensation;
       double t = overallMean + y;
-      fCompensation[i] = (t - overallMean) - y;
+      compensation = (t - overallMean) - y;
       overallMean = t;     
 
       //overallMean += fCounts[i] * fMeans[i];
    }
    overallMean = overallMean / totalElements;
 
+   double c = 0;
    double variance = 0;
    for (unsigned int i = 0; i < fNSlots; ++i) {
       if (fCounts[i] == 0) {
@@ -230,9 +259,9 @@ void StdDevHelper::Finalize()
       }
       auto setVariance = fDistancesfromMean[i] / (fCounts[i]);
       // Kahan Sum
-      double y = (fCounts[i]) * (setVariance + std::pow((fMeans[i] - overallMean), 2)) - fCompensation2[i];
+      double y = (fCounts[i]) * (setVariance + std::pow((fMeans[i] - overallMean), 2)) - c;
       double t = variance + y;
-      fCompensation2[i] = (t - variance) - y;
+      c = (t - variance) - y;
       variance = t;      
 
       //variance += (fCounts[i]) * (setVariance + std::pow((fMeans[i] - overallMean), 2));
