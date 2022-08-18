@@ -1212,6 +1212,7 @@ class R__CLING_PTRCHECK(off) MeanHelper : public RActionImpl<MeanHelper> {
    std::vector<ULong64_t> fCounts;
    std::vector<double> fSums;
    std::vector<double> fPartialMeans;
+   std::vector<double> fCompensations;
 
 public:
    MeanHelper(const std::shared_ptr<double> &meanVPtr, const unsigned int nSlots);
@@ -1224,8 +1225,13 @@ public:
    void Exec(unsigned int slot, const T &vs)
    {
       for (auto &&v : vs) {
-         fSums[slot] += v;
+
          fCounts[slot]++;
+         // Kahan Sum
+         double y = v - fCompensations[slot];
+         double t = fSums[slot] + y;
+         fCompensations[slot] = (t - fSums[slot]) - y;
+         fSums[slot] = t;
       }
    }
 
