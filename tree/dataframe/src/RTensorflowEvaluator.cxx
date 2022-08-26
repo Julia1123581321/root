@@ -1,12 +1,10 @@
-// Make bambootensorflow.C work without bamboo
-#include "tensorflowevaluator.h"
-
+#include <ROOT/RDF/RTensorflowEvaluator.hxx>
 #include <iostream>
 #include <fstream>
 #include <cstring>
 #include <sstream>
 #include <numeric>
-#include "tensorflow/c/c_api.h"
+#include <tensorflow/c/c_api.h>
 
 namespace {
 std::vector<int64_t> getInOutDimensions(TF_Graph* graph, TF_Output node, const std::string& ndName, TF_Status* status) {
@@ -42,7 +40,7 @@ void printShape(const std::string& nodeName, const std::vector<int64_t> dims) {
 }
 }
 
-TensorflowCEvaluator::TensorflowCEvaluator(const std::string& modelFile,
+ROOT::RDF::Experimental::TensorflowCEvaluator::TensorflowCEvaluator(const std::string& modelFile,
     const std::vector<std::string>& inputNames, const std::vector<std::string>& outputNames)
 {
   std::ifstream input{modelFile, std::ios::binary};
@@ -110,7 +108,7 @@ TensorflowCEvaluator::TensorflowCEvaluator(const std::string& modelFile,
   TF_DeleteStatus(status);
 }
 
-TensorflowCEvaluator::~TensorflowCEvaluator()
+ROOT::RDF::Experimental::TensorflowCEvaluator::~TensorflowCEvaluator()
 {
   TF_Status* status = TF_NewStatus();
   TF_CloseSession(m_session, status);
@@ -120,7 +118,7 @@ TensorflowCEvaluator::~TensorflowCEvaluator()
   TF_DeleteStatus(status);
 }
 
-TensorflowCEvaluator::output_t TensorflowCEvaluator::evaluate_tensors(InputTensors& inputValues) const {
+ROOT::RDF::Experimental::TensorflowCEvaluator::output_t ROOT::RDF::Experimental::TensorflowCEvaluator::evaluate_tensors(InputTensors& inputValues) const {
   TF_Status* status = TF_NewStatus();
   auto output_values = std::vector<TF_Tensor*>(m_outputs.size(), nullptr);
   TF_SessionRun(
@@ -138,7 +136,7 @@ TensorflowCEvaluator::output_t TensorflowCEvaluator::evaluate_tensors(InputTenso
   for ( auto out : output_values ) {
     nOut += TF_TensorElementCount(out);
   }
-  TensorflowCEvaluator::output_t output(nOut, 0.);
+  ROOT::RDF::Experimental::TensorflowCEvaluator::output_t output(nOut, 0.);
   std::size_t start = 0;
   for ( auto out : output_values ) {
     const auto nElm = TF_TensorElementCount(out);
